@@ -2,6 +2,8 @@ import os
 import sys
 import soxr
 import time
+import json
+import onnx
 import torch
 import librosa
 import logging
@@ -9,6 +11,7 @@ import traceback
 import numpy as np
 import soundfile as sf
 import noisereduce as nr
+import onnxruntime as ort
 from pedalboard import (
     Pedalboard,
     Chorus,
@@ -29,7 +32,6 @@ sys.path.append(now_dir)
 from rvc.infer.pipeline import Pipeline as VC
 from rvc.lib.utils import load_audio_infer, load_embedding
 from rvc.lib.tools.split_audio import process_audio, merge_audio
-from rvc.lib.algorithm.synthesizers import Synthesizer
 from rvc.configs.config import Config
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -428,10 +430,10 @@ class VoiceConverter:
 
         if not self.loaded_model or self.loaded_model != weight_root:
             self.load_model(weight_root)
+            self.loaded_model = weight_root
             if self.cpt is not None:
                 self.setup_network()
                 self.setup_vc_instance()
-            self.loaded_model = weight_root
 
     def cleanup_model(self):
         """
@@ -455,8 +457,9 @@ class VoiceConverter:
         Args:
             weight_root (str): Path to the model weights.
         """
+
         self.cpt = (
-            torch.load(weight_root, map_location="cpu", weights_only=True)
+            ort.InferenceSession(weight_root, providers=self.config.providers)
             if os.path.isfile(weight_root)
             else None
         )
@@ -466,23 +469,16 @@ class VoiceConverter:
         Sets up the network configuration based on the loaded checkpoint.
         """
         if self.cpt is not None:
-            self.tgt_sr = self.cpt["config"][-1]
-            self.cpt["config"][-3] = self.cpt["weight"]["emb_g.weight"].shape[0]
-            self.use_f0 = self.cpt.get("f0", 1)
+            metadata_dict = None
+            for prop in onnx.load(self.loaded_model).metadata_props:
+                if prop.key == "model_info":
+                    metadata_dict = json.loads(prop.value)
+                    break
 
-            self.version = self.cpt.get("version", "v1")
-            self.text_enc_hidden_dim = 768 if self.version == "v2" else 256
-            self.vocoder = self.cpt.get("vocoder", "HiFi-GAN")
-            self.net_g = Synthesizer(
-                *self.cpt["config"],
-                use_f0=self.use_f0,
-                text_enc_hidden_dim=self.text_enc_hidden_dim,
-                vocoder=self.vocoder,
-            )
-            del self.net_g.enc_q
-            self.net_g.load_state_dict(self.cpt["weight"], strict=False)
-            self.net_g = self.net_g.to(self.config.device).float()
-            self.net_g.eval()
+            self.net_g = self.cpt
+            self.tgt_sr = metadata_dict.get("sr", 32000)
+            self.use_f0 = metadata_dict.get("f0", 1)
+            self.version = metadata_dict.get("version", "v1")
 
     def setup_vc_instance(self):
         """
@@ -490,4 +486,4 @@ class VoiceConverter:
         """
         if self.cpt is not None:
             self.vc = VC(self.tgt_sr, self.config)
-            self.n_spk = self.cpt["config"][-3]
+            self.n_spk = None # self.cpt["config"][-3]

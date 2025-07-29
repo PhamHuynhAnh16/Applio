@@ -62,6 +62,7 @@ class Synthesizer(torch.nn.Module):
         vocoder: str = "HiFi-GAN",
         randomized: bool = True,
         checkpointing: bool = False,
+        onnx: bool = False,
         **kwargs,
     ):
         super().__init__()
@@ -79,6 +80,7 @@ class Synthesizer(torch.nn.Module):
             p_dropout,
             text_enc_hidden_dim,
             f0=use_f0,
+            onnx=onnx
         )
         print(f"Using {vocoder} vocoder")
         if use_f0:
@@ -242,3 +244,77 @@ class Synthesizer(torch.nn.Module):
         )
 
         return o, x_mask, (z, z_p, m_p, logs_p)
+
+class SynthesizerONNX(Synthesizer):
+    def __init__(
+        self,
+        spec_channels: int,
+        segment_size: int,
+        inter_channels: int,
+        hidden_channels: int,
+        filter_channels: int,
+        n_heads: int,
+        n_layers: int,
+        kernel_size: int,
+        p_dropout: float,
+        resblock: str,
+        resblock_kernel_sizes: list,
+        resblock_dilation_sizes: list,
+        upsample_rates: list,
+        upsample_initial_channel: int,
+        upsample_kernel_sizes: list,
+        spk_embed_dim: int,
+        gin_channels: int,
+        sr: int,
+        use_f0: bool,
+        text_enc_hidden_dim: int = 768,
+        vocoder: str = "HiFi-GAN",
+        randomized: bool = True,
+        checkpointing: bool = False,
+        **kwargs
+    ):
+        super().__init__(
+            spec_channels, 
+            segment_size, 
+            inter_channels, 
+            hidden_channels, 
+            filter_channels, 
+            n_heads, 
+            n_layers, 
+            kernel_size, 
+            p_dropout, 
+            resblock, 
+            resblock_kernel_sizes, 
+            resblock_dilation_sizes, 
+            upsample_rates, 
+            upsample_initial_channel, 
+            upsample_kernel_sizes, 
+            spk_embed_dim, 
+            gin_channels, 
+            sr, 
+            use_f0, 
+            text_enc_hidden_dim, 
+            vocoder, 
+            randomized, 
+            checkpointing, 
+            True,
+        )
+
+    def remove_weight_norm(self):
+        self.dec.remove_weight_norm()
+        self.flow.remove_weight_norm()
+        self.enc_q.remove_weight_norm()
+
+    def forward(self, phone, phone_lengths, g=None, rnd=None, pitch=None, nsff0=None, max_len=None):
+        g = self.emb_g(g).unsqueeze(-1)
+        m_p, logs_p, x_mask = self.enc_p(phone, pitch, phone_lengths)
+        z_p = (m_p + torch.exp(logs_p) * rnd) * x_mask
+
+        return self.dec(
+            (self.flow(z_p, x_mask, g=g, reverse=True) * x_mask)[:, :, :max_len], 
+            nsff0,
+            g=g,
+        ) if self.use_f0 else self.dec(
+            (self.flow(z_p, x_mask, g=g, reverse=True) * x_mask)[:, :, :max_len], 
+            g=g,
+        )

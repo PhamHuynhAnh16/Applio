@@ -356,10 +356,19 @@ class Pipeline:
                 pitch, pitchf = None, None
             p_len = torch.tensor([p_len], device=self.device).long()
             audio1 = (
-                (net_g.infer(feats.float(), p_len, pitch, pitchf.float(), sid)[0][0, 0])
-                .data.cpu()
-                .float()
-                .numpy()
+                net_g.run(
+                    [net_g.get_outputs()[0].name], (
+                        self.get_onnx_argument(
+                            net_g, 
+                            feats, 
+                            p_len, 
+                            sid, 
+                            pitch, 
+                            pitchf, 
+                            pitch_guidance
+                        )
+                    )
+                )[0][0, 0]
             )
             # clean up
             del feats, feats0, p_len
@@ -378,6 +387,22 @@ class Pipeline:
             + (1 - index_rate) * feats
         )
         return feats
+    
+    def get_onnx_argument(self, net_g, feats, p_len, sid, pitch, pitchf, pitch_guidance):
+        inputs = {
+            net_g.get_inputs()[0].name: feats.cpu().numpy().astype(np.float32),
+            net_g.get_inputs()[1].name: p_len.cpu().numpy(),
+            net_g.get_inputs()[2].name: np.array([sid.cpu().item()], dtype=np.int64),
+            net_g.get_inputs()[3].name: np.random.randn(1, 192, p_len).astype(np.float32)
+        }
+
+        if pitch_guidance:
+            inputs.update({
+                net_g.get_inputs()[4].name: pitch.cpu().numpy().astype(np.int64),
+                net_g.get_inputs()[5].name: pitchf.cpu().numpy().astype(np.float32)
+            })
+
+        return inputs
 
     def pipeline(
         self,

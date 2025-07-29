@@ -31,6 +31,7 @@ class Encoder(torch.nn.Module):
         kernel_size: int = 1,
         p_dropout: float = 0.0,
         window_size: int = 10,
+        onnx: bool = False,
     ):
         super().__init__()
 
@@ -46,12 +47,13 @@ class Encoder(torch.nn.Module):
                     n_heads,
                     p_dropout=p_dropout,
                     window_size=window_size,
+                    onnx=onnx
                 )
                 for _ in range(n_layers)
             ]
         )
         self.norm_layers_1 = torch.nn.ModuleList(
-            [LayerNorm(hidden_channels) for _ in range(n_layers)]
+            [LayerNorm(hidden_channels, onnx=onnx) for _ in range(n_layers)]
         )
         self.ffn_layers = torch.nn.ModuleList(
             [
@@ -61,12 +63,13 @@ class Encoder(torch.nn.Module):
                     filter_channels,
                     kernel_size,
                     p_dropout=p_dropout,
+                    onnx=onnx
                 )
                 for _ in range(n_layers)
             ]
         )
         self.norm_layers_2 = torch.nn.ModuleList(
-            [LayerNorm(hidden_channels) for _ in range(n_layers)]
+            [LayerNorm(hidden_channels, onnx=onnx) for _ in range(n_layers)]
         )
 
     def forward(self, x, x_mask):
@@ -111,7 +114,8 @@ class TextEncoder(torch.nn.Module):
         kernel_size: int,
         p_dropout: float,
         embedding_dim: int,
-        f0: bool = True,
+        f0: bool = True, 
+        onnx: bool = False,
     ):
         super().__init__()
         self.hidden_channels = hidden_channels
@@ -121,7 +125,7 @@ class TextEncoder(torch.nn.Module):
         self.emb_pitch = torch.nn.Embedding(256, hidden_channels) if f0 else None
 
         self.encoder = Encoder(
-            hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout
+            hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout, onnx=onnx
         )
         self.proj = torch.nn.Conv1d(hidden_channels, out_channels * 2, 1)
 

@@ -28,7 +28,7 @@ if os.path.exists(gradio_temp_dir):
 
 
 def save_drop_model(dropbox):
-    if "pth" not in dropbox and "index" not in dropbox:
+    if "pth" not in dropbox and "index" not in dropbox and "onnx" not in dropbox:
         raise gr.Error(
             message="The file you dropped is not a valid model file. Please try again."
         )
@@ -38,6 +38,8 @@ def save_drop_model(dropbox):
 
     if ".pth" in model_name:
         model_name = model_name.split(".pth")[0]
+    elif ".onnx" in model_name:
+        model_name = model_name.split(".onnx")[0]
     elif ".index" in model_name:
         replacements = ["nprobe_1_", "_v1", "_v2", "added_"]
         for rep in replacements:

@@ -24,7 +24,7 @@ def search_pth_index(folder):
     pth_paths = [
         os.path.join(folder, file)
         for file in os.listdir(folder)
-        if os.path.isfile(os.path.join(folder, file)) and file.endswith(".pth")
+        if os.path.isfile(os.path.join(folder, file)) and file.endswith((".pth", ".onnx"))
     ]
     index_paths = [
         os.path.join(folder, file)
@@ -216,6 +216,8 @@ def clean_extracted_files(extract_folder_path, model_name):
         source_path = os.path.join(extract_folder_path, item)
         if ".pth" in item:
             new_file_name = model_name + ".pth"
+        elif ".onnx" in item:
+            new_file_name = model_name + ".onnx"
         elif ".index" in item:
             new_file_name = model_name + ".index"
         else:

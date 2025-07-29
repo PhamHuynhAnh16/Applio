@@ -42,3 +42,9 @@ tensorboardX
 edge-tts==6.1.9
 pypresence
 beautifulsoup4
+
+# ONNX
+onnxruntime; sys_platform == 'darwin'
+onnxruntime-gpu; sys_platform != 'darwin'
+onnxsim
+onnx

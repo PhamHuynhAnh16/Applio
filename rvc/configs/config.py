@@ -1,3 +1,4 @@
+import onnxruntime
 import torch
 import json
 import os
@@ -24,6 +25,7 @@ def singleton(cls):
 class Config:
     def __init__(self):
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        self.providers = get_providers()
         self.gpu_name = (
             torch.cuda.get_device_name(int(self.device.split(":")[-1]))
             if self.device.startswith("cuda")
@@ -96,3 +98,18 @@ def get_number_of_gpus():
         return "-".join(map(str, range(num_gpus)))
     else:
         return "-"
+
+
+def get_providers():
+    ort_providers = onnxruntime.get_available_providers()
+
+    if "CUDAExecutionProvider" in ort_providers: 
+        providers = ["CUDAExecutionProvider"]
+    elif "DmlExecutionProvider" in ort_providers: 
+        providers = ["DmlExecutionProvider"]
+    elif "CoreMLExecutionProvider" in ort_providers: 
+        providers = ["CoreMLExecutionProvider"]
+    else: 
+        providers = ["CPUExecutionProvider"]
+    
+    return providers

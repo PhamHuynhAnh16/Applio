@@ -18,6 +18,7 @@ from rvc.train.process.model_information import model_information
 from rvc.lib.tools.analyzer import analyze_audio
 from rvc.lib.tools.launch_tensorboard import launch_tensorboard_pipeline
 from rvc.lib.tools.model_download import model_download_pipeline
+from rvc.lib.tools.onnx_exporter import onnx_exporter
 
 python = sys.executable
 
@@ -574,6 +575,10 @@ def run_model_information_script(pth_path: str):
     print(model_information(pth_path))
     return model_information(pth_path)
 
+
+# Onnx export
+def run_onnx_export_script(pth_path: str):
+    return onnx_exporter(pth_path, pth_path.replace(".pth", ".onnx"))
 
 # Model blender
 def run_model_blender_script(
