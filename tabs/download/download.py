@@ -27,31 +27,33 @@ if os.path.exists(gradio_temp_dir):
     shutil.rmtree(gradio_temp_dir)
 
 
-def save_drop_model(dropbox):
-    if "pth" not in dropbox and "index" not in dropbox:
-        raise gr.Error(
-            message="The file you dropped is not a valid model file. Please try again."
-        )
+def save_drop_model(drop_box):
+    for dropbox in drop_box:
+        if "pth" not in dropbox and "index" not in dropbox:
+            gr.Warning(
+                message=f"The {dropbox} file you dropped is not a valid model file. Please try again."
+            )
+            continue
 
-    file_name = format_title(os.path.basename(dropbox))
-    model_name = file_name
+        file_name = format_title(os.path.basename(dropbox))
+        model_name = file_name
 
-    if ".pth" in model_name:
-        model_name = model_name.split(".pth")[0]
-    elif ".index" in model_name:
-        replacements = ["nprobe_1_", "_v1", "_v2", "added_"]
-        for rep in replacements:
-            model_name = model_name.replace(rep, "")
-        model_name = model_name.split(".index")[0]
+        if ".pth" in model_name:
+            model_name = model_name.split(".pth")[0]
+        elif ".index" in model_name:
+            replacements = ["nprobe_1_", "_v1", "_v2", "added_"]
+            for rep in replacements:
+                model_name = model_name.replace(rep, "")
+            model_name = model_name.split(".index")[0]
 
-    model_path = os.path.join(now_dir, "logs", model_name)
-    if not os.path.exists(model_path):
-        os.makedirs(model_path)
-    if os.path.exists(os.path.join(model_path, file_name)):
-        os.remove(os.path.join(model_path, file_name))
-    shutil.move(dropbox, os.path.join(model_path, file_name))
-    print(f"{file_name} saved in {model_path}")
-    gr.Info(f"{file_name} saved in {model_path}")
+        model_path = os.path.join(now_dir, "logs", model_name)
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
+        if os.path.exists(os.path.join(model_path, file_name)):
+            os.remove(os.path.join(model_path, file_name))
+        shutil.move(dropbox, os.path.join(model_path, file_name))
+        print(f"{file_name} saved in {model_path}")
+        gr.Info(f"{file_name} saved in {model_path}")
 
     return None
 
@@ -186,7 +188,7 @@ def download_tab():
             outputs=[model_download_output_info],
         )
         gr.Markdown(value=i18n("## Drop files"))
-        dropbox = gr.File(
+        dropbox = gr.Files(
             label=i18n(
                 "Drag your .pth file and .index file into this space. Drag one and then the other."
             ),
