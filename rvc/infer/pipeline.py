@@ -13,7 +13,7 @@ from torch import Tensor
 now_dir = os.getcwd()
 sys.path.append(now_dir)
 
-from rvc.lib.predictors.f0 import CREPE, FCPE, RMVPE
+from rvc.lib.predictors.f0 import CREPE, FCPE, RMVPE, DJCM
 
 import logging
 
@@ -237,6 +237,12 @@ class Pipeline:
                 device=self.device, sample_rate=self.sample_rate, hop_size=self.window
             )
             f0 = model.get_f0(x, filter_radius=0.03)
+            del model
+        elif f0_method == "djcm":
+            model = DJCM(
+                device=self.device, sample_rate=self.sample_rate, hop_size=self.window
+            )
+            f0 = model.get_f0(x, filter_radius=0.05)
             del model
         elif f0_method == "fcpe":
             model = FCPE(
