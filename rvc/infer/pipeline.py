@@ -242,7 +242,7 @@ class Pipeline:
             model = DJCM(
                 device=self.device, sample_rate=self.sample_rate, hop_size=self.window
             )
-            f0 = model.get_f0(x, filter_radius=0.05)
+            f0 = model.get_f0(x, filter_radius=0.08)
             del model
         elif f0_method == "fcpe":
             model = FCPE(

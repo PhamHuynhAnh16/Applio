@@ -460,7 +460,7 @@ class DJCM0Predictor:
 
     def inference(self, segments):
         hidden_segments = torch.cat([
-            self.model(segments[i:i + self.batch_size]) 
+            self.model(segments[i:i + self.batch_size].float()) 
             for i in range(0, len(segments), self.batch_size)
         ], dim=0)
 
